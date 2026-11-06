@@ -83,4 +83,9 @@ import Testing
             pairing: pairing
         ) == nil)
     }
+
+    @Test func tailscaleRouteKeepsAccountAuthorizationOutsideLocalOnlyBuilds() {
+        #expect(MobileHostService.tailscaleRouteAuthorization(isLocalOnlyBuild: false) == .stackBearer)
+        #expect(MobileHostService.tailscaleRouteAuthorization(isLocalOnlyBuild: true) == .localDevice)
+    }
 }

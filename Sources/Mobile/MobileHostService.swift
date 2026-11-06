@@ -1,4 +1,5 @@
 import CmuxCloud
+import CmuxFoundation
 import CMUXMobileCore
 import CmuxAuthRuntime
 import CmuxGit
@@ -1079,7 +1080,11 @@ final class MobileHostService {
     /// Iroh uses its own UDP endpoint and may use an ephemeral port; this port
     /// is reserved only for clients that explicitly select the Tailscale route.
     private func startTailscaleListenerIfNeeded() {
-        guard !isSigningOut, auth == nil || auth?.authenticatedTeamScope != nil,
+        // An account-authorized route needs a signed-in team; a local-only
+        // build's route admits locally paired phones and has no account.
+        guard !isSigningOut,
+              Self.tailscaleRouteAuthorization() == .localDevice
+                || auth == nil || auth?.authenticatedTeamScope != nil,
               Self.isListeningEnabled(defaults: defaults), tailscaleListener == nil else { return }
         let configuredPort = Self.configuredPort(defaults: defaults)
         guard let port = UInt16(exactly: configuredPort), port > 0 else {
@@ -1192,13 +1197,21 @@ final class MobileHostService {
         #endif
     }
 
+    /// How the Tailscale TCP route authorizes a phone: with the Mac's signed-in
+    /// account (Stack bearer) normally, and with a key from local pairing in a
+    /// local-only build, which has no account.
+    nonisolated static func tailscaleRouteAuthorization(
+        isLocalOnlyBuild: Bool = CmuxLocalOnlyBuild.isEnabled
+    ) -> MobileHostConnectionAuthorizationContext {
+        isLocalOnlyBuild ? .localDevice : .stackBearer
+    }
+
     private func acceptTailscaleConnection(
         _ accepted: MobileHostPOSIXAcceptedConnection,
         generation: UUID
     ) {
         guard generation == tailscaleListenerGeneration,
               tailscaleIsRunning,
-              let admissionGeneration = tailscaleAdmissionGeneration,
               tailscaleAdmissionTasks.count < Self.maximumActiveConnectionCount * 2,
               !isSigningOut,
               Self.isListeningEnabled(defaults: defaults),
@@ -1209,13 +1222,19 @@ final class MobileHostService {
             close(accepted.fileDescriptor)
             return
         }
+        let authorization = Self.tailscaleRouteAuthorization()
+        let admissionGeneration = tailscaleAdmissionGeneration
+        guard authorization == .localDevice || admissionGeneration != nil else {
+            close(accepted.fileDescriptor)
+            return
+        }
         let transport = CmxPOSIXByteTransport(acceptedFileDescriptor: accepted.fileDescriptor)
         let taskID = UUID()
         let task = Task { @MainActor [weak self] in
             _ = await Self.acceptTransport(
                 transport,
-                authorization: .stackBearer,
-                stackBearerGeneration: admissionGeneration,
+                authorization: authorization,
+                stackBearerGeneration: authorization == .stackBearer ? admissionGeneration : nil,
                 hostDeviceID: MobileHostIdentity.deviceID(),
                 isCurrent: { [weak self] in
                     await MainActor.run { [weak self] in
