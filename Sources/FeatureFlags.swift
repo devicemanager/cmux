@@ -36,7 +36,9 @@ final class CmuxFeatureFlags {
     nonisolated static func mobileConnectButtonDefault(
         isLocalOnlyBuild: Bool = CmuxLocalOnlyBuild.isEnabled
     ) -> Bool {
-        false
+        // A local-only build pins flags to local values and pairs only
+        // through the local code, so nothing else would turn this on.
+        isLocalOnlyBuild
     }
     private static let sidebarAccountButtonDefault = true
 
@@ -246,7 +248,7 @@ final class CmuxFeatureFlags {
     //      reviewBy: 2026-12-15, defaultWhenUnavailable: false)
     // Shows the bottom-left sidebar iPhone button that opens the Tailscale
     // Pairing workspace. It stays hidden until the remote flag or a
-    // local debug override enables it.
+    // local debug override enables it; a local-only build shows it.
     static let mobileConnectButtonFlag = CmuxFeatureFlagDefinition(
         key: "mobile-connect-button-enabled-release",
         title: String(localized: "featureFlags.mobileConnect.title", defaultValue: "Mobile Pairing button"),
