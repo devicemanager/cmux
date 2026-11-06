@@ -88,4 +88,11 @@ import Testing
         #expect(MobileHostService.tailscaleRouteAuthorization(isLocalOnlyBuild: false) == .stackBearer)
         #expect(MobileHostService.tailscaleRouteAuthorization(isLocalOnlyBuild: true) == .localDevice)
     }
+
+    /// A local-only build pins feature flags to local values and can pair
+    /// only through the local code, so its pairing entry points default on.
+    @Test func mobilePairingEntryPointsDefaultOnInLocalOnlyBuilds() {
+        #expect(CmuxFeatureFlags.mobileConnectButtonDefault(isLocalOnlyBuild: false) == false)
+        #expect(CmuxFeatureFlags.mobileConnectButtonDefault(isLocalOnlyBuild: true) == true)
+    }
 }

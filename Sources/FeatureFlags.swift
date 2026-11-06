@@ -1,4 +1,5 @@
 import CMUXMobileCore
+import CmuxFoundation
 import CmuxSettings
 import Foundation
 import Observation
@@ -30,7 +31,13 @@ import os
 final class CmuxFeatureFlags {
     static let shared = CmuxFeatureFlags(publishesOffMainSnapshot: true)
 
-    private static let mobileConnectButtonDefault = false
+    /// Default for the Mobile Pairing entry points when no remote value or
+    /// local override exists.
+    nonisolated static func mobileConnectButtonDefault(
+        isLocalOnlyBuild: Bool = CmuxLocalOnlyBuild.isEnabled
+    ) -> Bool {
+        false
+    }
     private static let sidebarAccountButtonDefault = true
 
     private static let agentChatUIDefault = false
@@ -247,7 +254,7 @@ final class CmuxFeatureFlags {
             localized: "featureFlags.mobileConnect.description",
             defaultValue: "Shows the Mobile Pairing button in the sidebar footer."
         ),
-        defaultWhenUnavailable: CmuxFeatureFlags.mobileConnectButtonDefault
+        defaultWhenUnavailable: CmuxFeatureFlags.mobileConnectButtonDefault()
     )
 
     // FLAG(key: sidebar-account-button-enabled-release, owner: lawrencecchen,
